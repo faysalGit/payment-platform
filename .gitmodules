@@ -1,0 +1,3 @@
+[submodule "shared-contracts"]
+	path = shared-contracts
+	url = https://github.com/faysalGit/shared-contracts.git
