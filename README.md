@@ -1,5 +1,3 @@
-# Root Directory README md
-
 ## High-Volume Payment Processing Platform
 Welcome to the root development workspace of the High-Volume Payment Processing Platform. This project is built using a Spec-Driven Development (SDD) model via OpenSpec, enforcing strict decoupling between system behavior, configuration matrices, and actual Java 21 / Spring Boot 3 microservice codebases.
 ------------------------------
