@@ -1,0 +1,70 @@
+# OpenSpec Project Configuration Schema
+# This file serves as the system index linking each independent source code repository 
+# to its corresponding formal functional domain specification within the workspace.
+
+project:
+  name: "High-Volume Payment Processing Platform"
+  version: "1.0.0"
+  constitution: "openspec/project.md"
+
+# Declarative registration of the 12 individual platform repositories
+modules:
+  - id: "payment-api-gateway"
+    name: "Payment API Gateway"
+    repository: "payment-api-gateway"
+    spec: "openspec/specs/api-gateway/spec.md"
+
+  - id: "payment-ui"
+    name: "Payment Administrative UI"
+    repository: "payment-ui"
+    spec: "openspec/specs/ui/spec.md"
+
+  - id: "payment-service"
+    name: "Payment Core Lifecycle Service"
+    repository: "payment-service"
+    spec: "openspec/specs/payment-service/spec.md"
+
+  - id: "fraud-service"
+    name: "Fraud Risk Scoring Service"
+    repository: "fraud-service"
+    spec: "openspec/specs/fraud-service/spec.md"
+
+  - id: "payment-worker"
+    name: "Asynchronous Payment Processing Worker"
+    repository: "payment-worker"
+    spec: "openspec/specs/payment-worker/spec.md"
+
+  - id: "provider-router-service"
+    name: "Third-Party Provider Router Service"
+    repository: "provider-router-service"
+    spec: "openspec/specs/provider-router-service/spec.md"
+
+  - id: "notification-service"
+    name: "Outbound Customer Notification Service"
+    repository: "notification-service"
+    spec: "openspec/specs/notification-service/spec.md"
+
+  - id: "ledger-service"
+    name: "Immutable Financial Ledger Service"
+    repository: "ledger-service"
+    spec: "openspec/specs/ledger-service/spec.md"
+
+  - id: "reconciliation-service"
+    name: "Post-Facto Clearing & Reconciliation Service"
+    repository: "reconciliation-service"
+    spec: "openspec/specs/reconciliation-service/spec.md"
+
+  - id: "analytics-service"
+    name: "Read-Optimized Metrics & Analytics Service"
+    repository: "analytics-service"
+    spec: "openspec/specs/analytics-service/spec.md"
+
+  - id: "shared-contracts"
+    name: "Centralized Schema & Shared Contracts"
+    repository: "shared-contracts"
+    spec: "openspec/specs/shared-contracts/spec.md"
+
+  - id: "payment-infrastructure"
+    name: "Multi-Environment Infrastructure-as-Code"
+    repository: "payment-infrastructure"
+    spec: "openspec/specs/infrastructure/spec.md"

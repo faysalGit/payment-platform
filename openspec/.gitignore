@@ -1,0 +1,42 @@
+# Root Directory gitignore
+
+# =========================================================================
+# OpenSpec Root Repository .gitignore
+# =========================================================================
+# This configuration enforces the "Specification-Only" root repository pattern.
+# It explicitly prevents the root repository from tracking the 12 microservices,
+# which are managed as completely separate standalone Git repositories.
+
+# Ignore all 12 operational microservice sub-repositories
+/payment-api-gateway/
+/payment-ui/
+/payment-service/
+/fraud-service/
+/payment-worker/
+/provider-router-service/
+/notification-service/
+/ledger-service/
+/reconciliation-service/
+/analytics-service/
+/shared-contracts/
+/payment-infrastructure/
+
+
+# Ignore local IDE metadata environments (preserving the explicit code-workspace)
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Ignore system-specific or OS transient files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+

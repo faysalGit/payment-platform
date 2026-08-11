@@ -1,0 +1,72 @@
+{
+  "folders": [
+    {
+      "name": "00 - PLATFORM CONFIGURATION (OpenSpec)",
+      "path": "."
+    },
+    {
+      "name": "01 - EDGE - payment-api-gateway",
+      "path": "payment-api-gateway"
+    },
+    {
+      "name": "01 - EDGE - payment-ui",
+      "path": "payment-ui"
+    },
+    {
+      "name": "02 - CORE - payment-service",
+      "path": "payment-service"
+    },
+    {
+      "name": "02 - CORE - fraud-service",
+      "path": "fraud-service"
+    },
+    {
+      "name": "02 - CORE - payment-worker",
+      "path": "payment-worker"
+    },
+    {
+      "name": "03 - ROUTING - provider-router-service",
+      "path": "provider-router-service"
+    },
+    {
+      "name": "04 - DATA & AUDIT - ledger-service",
+      "path": "ledger-service"
+    },
+    {
+      "name": "04 - DATA & AUDIT - reconciliation-service",
+      "path": "reconciliation-service"
+    },
+    {
+      "name": "04 - DATA & AUDIT - analytics-service",
+      "path": "analytics-service"
+    },
+    {
+      "name": "05 - ASYNC ALERTS - notification-service",
+      "path": "notification-service"
+    },
+    {
+      "name": "06 - UTILITIES - shared-contracts",
+      "path": "shared-contracts"
+    },
+    {
+      "name": "06 - UTILITIES - payment-infrastructure",
+      "path": "payment-infrastructure"
+    }
+  ],
+  "settings": {
+    "search.exclude": {
+      "**/bin": true,
+      "**/obj": true,
+      "**/node_modules": true,
+      "**/.git": true,
+      "**/dist": true,
+      "**/.gradle": true,
+      "**/.idea": true
+    },
+    "files.exclude": {
+      "**/.git": true,
+      "**/.DS_Store": true
+    },
+    "editor.formatOnSave": true
+  }
+}
