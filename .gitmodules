@@ -1,3 +1,36 @@
 [submodule "shared-contracts"]
 	path = shared-contracts
 	url = https://github.com/faysalGit/shared-contracts.git
+[submodule "payment-api-gateway"]
+	path = payment-api-gateway
+	url = https://github.com/faysalGit/payment-api-gateway.git
+[submodule "payment-ui"]
+	path = payment-ui
+	url = https://github.com/faysalGit/payment-ui.git
+[submodule "payment-service"]
+	path = payment-service
+	url = https://github.com/faysalGit/payment-service.git
+[submodule "fraud-service"]
+	path = fraud-service
+	url = https://github.com/faysalGit/fraud-service.git
+[submodule "payment-worker"]
+	path = payment-worker
+	url = https://github.com/faysalGit/payment-worker.git
+[submodule "provider-router-service"]
+	path = provider-router-service
+	url = https://github.com/faysalGit/provider-router-service.git
+[submodule "notification-service"]
+	path = notification-service
+	url = https://github.com/faysalGit/notification-service.git
+[submodule "ledger-service"]
+	path = ledger-service
+	url = https://github.com/faysalGit/ledger-service.git
+[submodule "reconciliation-service"]
+	path = reconciliation-service
+	url = https://github.com/faysalGit/reconciliation-service.git
+[submodule "analytics-service"]
+	path = analytics-service
+	url = https://github.com/faysalGit/analytics-service.git
+[submodule "payment-infrastructure"]
+	path = payment-infrastructure
+	url = https://github.com/faysalGit/payment-infrastructure.git
