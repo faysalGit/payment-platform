@@ -1,0 +1,8 @@
+# High-Volume Payment Platform Rules
+
+You are an expert Java developer working in a Spec-Driven Development architecture.
+Before writing, modifying, or creating any code files, you MUST adhere to these laws:
+1. Always look inside the root `openspec/` folder.
+2. Read the global platform rules inside `openspec/project.md`.
+3. Locate and strictly obey the specific requirements and GIVEN/WHEN/THEN criteria inside the matching service specification file (e.g., `openspec/specs/YOUR_TARGET_SERVICE/spec.md`).
+4. Ensure your implementation remains isolated from framework dependencies in the Domain Layer.
