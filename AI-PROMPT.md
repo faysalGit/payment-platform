@@ -1,81 +1,82 @@
-# AI Prompt Master Blueprint
-## AI Prompt Engineering Blueprint (AI-PROMPT.md)
-This document contains a structured orchestration blueprint designed to guide any conversational or autonomous AI agent (such as Cline, Cursor, Claude, ChatGPT, or DeepSeek) through implementing the remaining backend modules of the platform.
-------------------------------
-## 1. Initial Context Ingestion (The Initialization Prompt)
-Execute this prompt as the first message in a fresh AI chat session. It locks the assistant into your Spec-Driven Development architecture before generating any files.
+# AI Prompt Engineering Master Template for Spec-Driven Development
 
-You are an expert enterprise backend engineer specializing in Spec-Driven Development (SDD), Java 21, Spring Boot 3.x, and Clean Architecture. 
+Keep this file saved as `AI-PROMPT.md` at the absolute root of your `payment-platform` workspace. When you are ready to begin implementing a new microservice repository, copy and paste these prompt phases sequentially into your AI chat assistant (such as Cline, Claude Code, or Cursor).
 
-We are developing a high-volume, reactive payment processing platform organized as a multi-repository workspace. To guide your development, you have access to two authoritative markdown files in our workspace context:
-1. @openspec/project.md (The Platform Constitution - detailing clean architecture layers, immutability laws, and coding invariants).
-2. @openspec/specs/[TARGET_SERVICE_NAME]/spec.md (The specific functional requirements and behavioral criteria for this service).
+---
 
-CRITICAL OPERATIONAL RULES:
-- Read both files completely before proposing an implementation or writing code files.
-- You must strictly enforce Java 21 features (Records, Sealed Interfaces, Pattern Matching, Pattern Matching for Switch) instead of legacy boilerplates.
-- You are forbidden from using Lombok annotations (@Data, @Builder, @AllArgsConstructor, etc.). All data structures must rely on native Java syntax.
-- Domain layer models must contain ZERO framework dependencies (no Spring, no Jakarta/JPA annotations). Frameworks belong exclusively to the Infrastructure layer.
-- Do not abbreviate or write placeholders like "// TODO" or "...". Generate complete, functional, compilable code files.
+## Phase 1: Ingestion & Context Anchoring
+**Goal**: Feed the core design rules and system constraints into the AI session to eliminate hallucinations before a single line of code is generated.
 
-Acknowledge these instructions and state the primary structural rules of our Platform Constitution before we begin writing code.
+### Execution Prompt
+"You are an expert enterprise Java software engineer operating within a strict Spec-Driven Development (SDD) ecosystem. Before generating files, writing code, or suggesting application logic, you must fully anchor your session to our platform blueprints.
 
-------------------------------
-## 2. Step-by-Step Microservice Scaffolding Sequence
-Once the AI agent acknowledges the setup, execute the following prompt sequences one by one to implement the target repository.
-## Step 2.1: The Local Build Configuration
+Please read and analyze the following markdown documents from our workspace:
+1. Global Platform Constitution: `@openspec/project.md`
+2. Service Functional Specification: `@openspec/specs/[INSERT_SERVICE_NAME_HERE]/spec.md`
+3. Platform CI/CD & Azure Deployment Invariants: `@openspec/specs/cicd-architecture/spec.md`
 
-Please read @openspec/specs/[TARGET_SERVICE_NAME]/spec.md and generate a production-ready, clean Apache Maven `pom.xml` configuration file inside the root directory of this repository. 
+Do not generate any code or create directories yet. Acknowledge your ingestion of these three documents by summarizing:
+- The core business responsibility of this specific microservice.
+- The strict architectural boundaries dictated by our Clean Architecture paradigm (e.g., framework isolation).
+- The exact containerization and deployment models required by our Azure Kubernetes Service (AKS) and Azure Pipelines integration guidelines.
+Confirm that you are ready to implement this service using pure Java 21, zero Lombok annotations, and clean record syntax."
 
-The configuration requirements are:
-1. It MUST inherit cleanly from the master platform parent POM found inside the `shared-contracts` repository.
-2. It must explicitly declare the required dependencies specified in the spec file (e.g., Spring Cloud Gateway for the API Gateway, or Spring Kafka and Spring Boot Starter Data JPA for backend processing services).
-3. It must import the `shared-contracts` library dependency to gain access to our unified API DTOs and Kafka domain events.
-4. It must contain zero Lombok dependencies and enforce clear compiler parameters for Java 21.
+---
 
-## Step 2.2: The Domain Layer (Entities & Invariants)
+## Phase 2: Scaffolding & Build Configuration
+**Goal**: Build a clean, compilable project directory layout with synchronized library dependencies.
 
-Based strictly on the behavioral rules and domain requirements in the spec, please generate the core Domain Models and Aggregate Roots for this service under the `com.payment.platform.[service_name].domain.model` package.
+### Execution Prompt
+"Based strictly on the build parameters outlined in `@openspec/project.md` and the service rules in `@openspec/specs/[INSERT_SERVICE_NAME_HERE]/spec.md`, please generate a production-ready Apache Maven `pom.xml` configuration file at the root of the local microservice directory.
 
-Ensure that:
-1. All domain objects are written as clean Java classes or immutable records.
-2. They contain zero external framework or database annotations (no JPA `@Entity`, `@Table`, or `@Id`).
-3. State transitions are explicitly encapsulated as internal validation methods that throw descriptive domain exceptions if invalid hops are attempted.
-4. If the service emits domain messages, provide a mechanism within the aggregate root to capture an internal list of immutable domain events for transactional outbox routing.
+The configuration must:
+- Cleanly inherit from our master platform parent POM.
+- Explicitly declare Java 21 compilation source and target parameters.
+- Import the compiled `shared-contracts` library dependency jar.
+- Include only the minimal, non-blocking third-party starter frameworks specified for this sub-domain (e.g., Spring Boot, Database Drivers, or Reactive Messaging).
+- Contain absolutely zero references to Lombok or deprecated build plugins.
 
-## Step 2.3: The Domain Ports (Adapter Interfaces)
+Once the `pom.xml` file is written, write a minimalist, non-blocking main bootstrap application entry point class within the appropriate root base package."
 
-Please generate the boundary Port interfaces for the domain layer under the `com.payment.platform.[service_name].domain.repository` or `com.payment.platform.[service_name].domain.port` packages.
+---
 
-This includes:
-1. Outbound Repository ports defining contract methods for state persistence and retrieval (decoupled from actual database implementations).
-2. Outbound Message Broker ports defining contract methods for broadcasting transactional notifications or domain events.
+## Phase 3: Bounded Context Domain Models
+**Goal**: Implement pure business entities and data invariants isolated from databases or presentation concerns.
 
-## Step 2.4: The Application Layer (Use Case Command Handlers)
+### Execution Prompt
+"Reviewing the domain logic and GIVEN/WHEN/THEN behavior rules in `@openspec/specs/[INSERT_SERVICE_NAME_HERE]/spec.md`, please generate the core domain layer objects within the internal application core package.
 
-Please create the application core Use Case interactors and Command Handlers under the `com.payment.platform.[service_name].application.usecase` package.
+Follow these strict domain boundaries:
+- Use immutable Java 21 records to represent value objects, transactional inputs, and data containers.
+- Ensure the domain objects contain zero external framework metadata, persistence layer mapping parameters (no JPA/Hibernate annotations), or web controller indicators.
+- Encapsulate all business validation rules directly inside the canonical constructor paths of the records, throwing explicit domain exceptions if structural invariants are violated."
 
-Ensure that:
-1. Each use case is an independent, specialized component class (e.g., `CreatePaymentUseCase`, `ProcessReconciliationUseCase`).
-2. The handlers orchestrate the business workflow by looking up idempotency keys, loading aggregates via domain repository ports, executing state transition logic on the aggregates, and saving the updated states back through the ports.
-3. The entire sequence is wrapped cleanly within a transactional Unit of Work to enforce strict consistency boundaries.
+---
 
-## Step 2.5: The Infrastructure Layer (Adapters & Rest/Kafka Controllers)
+## Phase 4: Application Use Cases, Ports, & Business Logic
+**Goal**: Build the operational use case command handlers and declare the boundaries for external persistence adapters.
 
-Please generate the concrete Infrastructure layer adapters under the `com.payment.platform.[service_name].infrastructure` package.
+### Execution Prompt
+"Based on the operational flows detailed in the service specification, please implement the application layer use cases and business logic service flows.
 
-Implement:
-1. Inbound REST Controllers or reactive routing handlers mapping HTTP request vectors to application use cases. Ensure requests are validated via `jakarta.validation` rules before executing handlers.
-2. Inbound Kafka Message Listeners or event consumers handling incoming data streams. They must ingest `BaseEvent` payloads and use type-safe switch blocks or pattern matching to route messages safely.
-3. Outbound Database Adapters implementing your domain repository ports using Spring Data JPA or reactive repositories. Ensure that saving an aggregate automatically processes and flushes its internal transactional outbox events to guarantee message delivery reliability.
+You must follow these rules:
+- Separate data commands from informational queries.
+- Declare explicit interface boundaries (Ports/Repositories) for any external operations, such as database lookups, cache checks, or event publishing actions. Do not provide the implementations yet.
+- Inject these repository interface boundaries into your use case handlers using standard, native Java constructor injection (no `@Autowired` fields).
+- Ensure all operations map tracking parameters correctly by propagating the mandatory `X-Correlation-ID` header value throughout the active execution context."
 
-## Step 2.6: Comprehensive Unit Test Suite
+---
 
-Based on the generic validation scenarios and GIVEN/WHEN/THEN criteria enumerated in the specification file, please generate a comprehensive JUnit 5 unit test suite for this microservice under the `src/test/java` directory.
+## Phase 5: Infrastructure Adapters & Pipeline Realization
+**Goal**: Complete the operational layer by providing concrete web controllers, database adapters, Dockerfiles, and Azure Pipelines.
 
-The test suite must:
-1. Mock all outbound infrastructure ports using Mockito to isolate the application core.
-2. Explicitly verify every happy-path state transition and edge-case error boundary scenario detailed in the spec.
-3. Assert that validation errors throw standardized platform exceptions and emit correct tracking data.
+### Execution Prompt
+"With the core domain and application layer compile-verified, please implement the concrete infrastructure integration boundaries.
 
+Please generate:
+1. Rest controllers or reactive event listeners that map incoming transport objects to our immutable `shared-contracts` DTO formats.
+2. Concrete database adapter repositories that translate domain state models into persistence layout tables cleanly.
+3. A multi-stage `Dockerfile` sitting at the root of this microservice folder, following the exact multi-stage openjdk compilation caching layers laid out in `@openspec/specs/cicd-architecture/spec.md`.
+4. A fully operational, credential-isolated `azure-pipelines.yml` deployment script at the service root, mapping build triggers to Azure DevOps pipelines and targeting our private Azure Container Registry (ACR) and Azure Kubernetes Service (AKS) namespaces exactly as dictated by the deployment spec.
 
+Ensure all infrastructure adapters remain strictly decoupled from the core application layer logic."
