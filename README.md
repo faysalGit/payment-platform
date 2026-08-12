@@ -1,9 +1,10 @@
-## High-Volume Payment Processing Platform
+﻿## High-Volume Payment Processing Platform
 Welcome to the root development workspace of the High-Volume Payment Processing Platform. This project is built using a Spec-Driven Development (SDD) model via OpenSpec, enforcing strict decoupling between system behavior, configuration matrices, and actual Java 21 / Spring Boot 3 microservice codebases.
 ------------------------------
 ## 1. Multi-Repository Directory Structure
 This workspace uses a multi-root architecture mapped via payment-platform.code-workspace. The platform is divided into 12 independent repositories grouped by their operational responsibility:
 
+```text
 payment-platform/                  # Root Workspace Directory
 ├── openspec/                      # Centralized OpenSpec Single Source of Truth
 │   ├── config.yaml                # Global module registry & repository mappings
@@ -34,7 +35,7 @@ payment-platform/                  # Root Workspace Directory
 ├── analytics-service/             # Read-optimized business metrics dashboard engine repository
 ├── shared-contracts/              # Centralized schema models & Protocol Buffers repository
 └── payment-infrastructure/        # Infrastructure-as-Code (Terraform/Bicep modules) repository
-
+```
 ------------------------------
 ## 2. Architectural Summary of Completed Milestones
 The platform's structural design has been fully detailed across the following sequential execution steps:
@@ -94,5 +95,4 @@ In high-volume distributed microservices architectures and Spec-Driven Developme
 
 * The Strategy: Construct the surrounding environmental and client layers around the backend architecture. Infrastructure-as-Code modules build the physical cloud topologies (subnets, AKS clusters, secret vaults) matching the service map. The frontend interface serves as the final consumption plane.
 * The Rationale: Designing infrastructure rules and user experiences last ensures they match your backend constraints perfectly. Because the UI layer has visibility over gateway error contracts (e.g., HTTP 429), state structures, and pagination signatures, it can be engineered cleanly without guessing api specifications.
-
 
