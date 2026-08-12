@@ -1,4 +1,5 @@
-﻿## High-Volume Payment Processing Platform
+﻿# Global Platform Master Workspace Blueprint
+## High-Volume Payment Processing Platform
 Welcome to the root development workspace of the High-Volume Payment Processing Platform. This project is built using a Spec-Driven Development (SDD) model via OpenSpec, enforcing strict decoupling between system behavior, configuration matrices, and actual Java 21 / Spring Boot 3 microservice codebases.
 ------------------------------
 ## 1. Multi-Repository Directory Structure
@@ -6,6 +7,9 @@ This workspace uses a multi-root architecture mapped via payment-platform.code-w
 
 ```text
 payment-platform/                  # Root Workspace Directory
+├── .clinerules                    # Global AI assistant engineering laws
+├── AI-PROMPT.md                   # Master AI context execution framework
+├── payment-platform.code-workspace # Multi-root IDE configuration registry
 ├── openspec/                      # Centralized OpenSpec Single Source of Truth
 │   ├── config.yaml                # Global module registry & repository mappings
 │   ├── project.md                 # Platform Constitution (Clean Architecture & Java Invariants)
@@ -21,6 +25,7 @@ payment-platform/                  # Root Workspace Directory
 │       ├── notification-service/spec.md
 │       ├── analytics-service/spec.md
 │       ├── payment-infrastructure/spec.md
+│       ├── cicd-architecture/spec.md # Centralized CI/CD & pipeline specs
 │       └── payment-ui/spec.md
 │
 ├── payment-api-gateway/           # Edge routing, OAuth validation, Rate limiting repository
@@ -54,17 +59,31 @@ The platform's structural design has been fully detailed across the following se
    12. Customer Notification Ring (specs/notification-service/spec.md): Isolated multi-channel dispatch frameworks (Email, SMS, Push) from core transactional domains via stateless, message-driven loops.
    13. Telemetry Analytics (specs/analytics-service/spec.md): Constructed an asynchronous read-model database projection framework using CQRS principles to keep long-running calculation queries off transactional resources.
    14. Infrastructure-as-Code (specs/payment-infrastructure/spec.md): Bound environment creation to parameter-driven declarative scripts (Terraform/Bicep) with automated secure secret vault injection.
-   15. User Interface Canvas (specs/payment-ui/spec.md): Standardized a React + TypeScript SPA boundary designed to react to backend REST error structures, inject client-side idempotency tracking markers, and handle sensitive cardholder profiles inside secure iframes.
+   15. CI/CD & Deployment (specs/cicd-architecture/spec.md): Outlined the enterprise secure deployment topology mapping GitHub code triggers natively to internal automated Azure Pipelines execution loops.
+   16. User Interface Canvas (specs/payment-ui/spec.md): Standardized a React + TypeScript SPA boundary designed to react to backend REST error structures, inject client-side idempotency tracking markers, and handle sensitive cardholder profiles inside secure iframes.
 
 ------------------------------
-## 3. Local Development Execution Loop
+## 3. Azure DevOps CI/CD Integration Framework
+To ensure maximum security and isolate operational credentials from your open code platforms, the architecture segregates source code hosting from operational build execution:
+
+* Source Code Control Plane: GitHub acts strictly as a stateless, git-history tracking plane. No infrastructure credentials, service principal JSON certificates, or cluster secrets are saved within your GitHub repository parameters.
+* Isolated Build Execution: Azure DevOps (dev.azure.com) hooks directly into your GitHub webhooks using secure OAuth Service Connections. All automated verification compiles (mvn clean test), Docker layering routines, and Kubernetes rollout procedures execute strictly inside isolated Azure-hosted agent pools.
+
+## Local Component Integration Layout
+Each individual microservice repository utilizes two unified files sitting at its absolute root folder path to interface with this deployment mesh:
+
+   1. Dockerfile: A multi-stage, non-root execution recipe that uses an eclipse-temurin Java 21 JDK layer to run test suites, strips out compilation tooling overheads, and copies the execution artifact over to a hardened Alpine JRE runtime shell.
+   2. azure-pipelines.yml: A declarative pipeline structure defining individual execution blocks for staging compilations, building and push operations to Azure Container Registry (ACR), and zero-downtime manifest bakes directly into your Azure Kubernetes Service (AKS) namespaces.
+
+------------------------------
+## 4. Local Development Execution Loop
 When building out codebases within any individual repository, adhere to the single source of truth:
 
-* Run openspec validation (or your pipeline's lint command) to guarantee local implementations do not violate the core requirements written in the openspec/specs/ directory.
+* Run OpenSpec validation (or your pipeline's lint command) to guarantee local implementations do not violate the core requirements written in the openspec/specs/ directory.
 * Ensure all code modifications preserve the separation of concerns between API, Application, Domain, and Infrastructure modules defined in the platform constitution.
 
 ------------------------------
-## 4. Rationale and Strategic Sequencing Breakdown
+## 5. Rationale and Strategic Sequencing Breakdown
 In high-volume distributed microservices architectures and Spec-Driven Development (SDD), the order of operations is vital to prevent circular engineering redesign loops and architectural drift. The platform's specifications were built according to the following engineering phases:
 ## Phase 1: Structural Foundations & Constraining Invariants (Steps 1–3)
 
@@ -83,7 +102,7 @@ In high-volume distributed microservices architectures and Spec-Driven Developme
 
 ## Phase 4: Financial Integrity & Asset Accounting (Steps 9–10)
 
-* The Strategy: Record and auditing the resulting transactional mutations securely. Once an integration strategy resolves a provider response, the outcome becomes formal financial record data. It must be appended immutably to a corporate journal (Ledger) and cross-checked against external settlement assets (Reconciliation).
+* The Strategy: Record and audit the resulting transactional mutations securely. Once an integration strategy resolves a provider response, the outcome becomes formal financial record data. It must be appended immutably to a corporate journal (Ledger) and cross-checked against external settlement assets (Reconciliation).
 * The Rationale: Positioning the ledger and reconciliation components here completes the functional transaction stream loop, ensuring total data auditability from edge entry to settling files.
 
 ## Phase 5: Shared Contracts & Downstream Utilities (Steps 11–13)
@@ -91,8 +110,9 @@ In high-volume distributed microservices architectures and Spec-Driven Developme
 * The Strategy: Abstract the settled domain patterns into reusable network contract libraries. Once core processing engines, workers, and ledger persistence schemas are validated, their shared messaging payloads are centralized into a versioned registry (shared-contracts). This creates the foundation for decoupled, reactive notification and analytics systems.
 * The Rationale: Because notifications and telemetry engines are pure downstream consumers of system data, designing them earlier would have resulted in unvalidated schema assumptions and pipeline breakage during structural changes.
 
-## Phase 6: Cloud Provisioning & Visual Consumption (Steps 14–15)
+## Phase 6: Cloud Provisioning & Visual Consumption (Steps 14–16)
 
-* The Strategy: Construct the surrounding environmental and client layers around the backend architecture. Infrastructure-as-Code modules build the physical cloud topologies (subnets, AKS clusters, secret vaults) matching the service map. The frontend interface serves as the final consumption plane.
-* The Rationale: Designing infrastructure rules and user experiences last ensures they match your backend constraints perfectly. Because the UI layer has visibility over gateway error contracts (e.g., HTTP 429), state structures, and pagination signatures, it can be engineered cleanly without guessing api specifications.
+* The Strategy: Construct the surrounding environmental, automation pipeline, and client layers around the backend architecture. Infrastructure-as-Code modules build the physical cloud topologies (subnets, AKS clusters, secret vaults) matching the service map. CI/CD scripts establish the continuous integration parameters, and the frontend interface serves as the final consumption plane.
+* The Rationale: Designing infrastructure rules, integration automation loops, and user experiences last ensures they match your backend constraints perfectly. Because the UI layer has visibility over gateway error contracts (e.g., HTTP 429), state structures, and pagination signatures, it can be engineered cleanly without guessing API specifications.
+
 
