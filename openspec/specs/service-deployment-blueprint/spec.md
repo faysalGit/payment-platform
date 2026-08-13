@@ -1,7 +1,7 @@
 ## 1. Local Microservice Folder Matrix
 To ensure loose coupling and independent deployability across your platform, every distinct application repository (such as payment-api-gateway and payment-service) must host its own explicit copy of its containerization, build pipeline, and routing manifests. Ensure your local files are placed exactly according to this directory tree layout:
 
-```text
+```
 📁 payment-service/ (Or payment-api-gateway/)
 │
 ├── 📄 pom.xml                      <-- Core Build Configuration
@@ -20,7 +20,7 @@ To ensure loose coupling and independent deployability across your platform, eve
 ## 2. Verified Microservice Dockerfile Template
 Save this optimized, single-stage configuration script as Dockerfile at the absolute root directory of your individual service folder. This structure leverages the compiled outputs from your Azure DevOps environment, completely removing private submodule .jar classpath errors by relying on the pipeline agent's compilation artifact.
 
-```text
+```
 # =========================================================================
 # Lightweight Java 21 Non-Root Container Execution Runtime Environment
 # =========================================================================
@@ -46,7 +46,7 @@ ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar platform-service.jar"]
 ## 3. Verified azure-pipelines.yml Automation Engine
 Save this automation script as azure-pipelines.yml at the absolute root directory of your individual service folder. Ensure you alter the pom.xml target flags to execute a standard package routine so that the resulting .jar file is visible to the Dockerfile copy task.
 
-```text
+```
 trigger:
   batch: true
   branches:
@@ -137,7 +137,7 @@ stages:
 ## 4. Verified Kubernetes Cluster Manifest (k8s/deployment.yml)
 Save this resource manifest as deployment.yml inside a folder named k8s located at the absolute root directory of your individual service workspace (e.g., payment-service/k8s/deployment.yml). This manifest handles pod lifecycle scaling, compute resource limits, configuration injection flags, and network service load-balancing mappings.
 
-```text
+```
 # =========================================================================
 # Application Workload Pod Replica Specification
 # =========================================================================
@@ -229,4 +229,154 @@ spec:
       name: http-routing
   selector:
     app: payment-service
+```
+
+## Section 5: Global Multi-Module GitIgnore and Untracking Configurations
+
+1. Root Repository .gitignore SpecificationSave this exact block directly into your absolute root file location path: payment-platform/.gitignore
+
+```
+# =========================================================================
+# OpenSpec Master Platform Root Repository .gitignore
+# =========================================================================
+# Enforces the "Specification-Only" orchestration pattern by preventing 
+# the parent plane from absorbing standalone decoupled sub-repositories.
+
+# Ignore all 12 operational microservice sub-repositories
+/payment-api-gateway/
+/payment-ui/
+/payment-service/
+/fraud-service/
+/payment-worker/
+/provider-router-service/
+/notification-service/
+/ledger-service/
+/reconciliation-service/
+/analytics-service/
+/shared-contracts/
+/payment-infrastructure/
+
+# =========================================================================
+# AI Autonomous Agent Transient & State Management Directories
+# =========================================================================
+.agents/
+.claude/
+.github/
+.cline/
+.roo/
+bin/
+obj/
+
+# =========================================================================
+# Local IDE Project Metadata Registries
+# =========================================================================
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.log
+
+# =========================================================================
+# Global Compilations and Runtime Execution Binaries
+# =========================================================================
+target/
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# =========================================================================
+# Core Operating System Transient Metadata Blocks
+# =========================================================================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+```
+
+## 2. Universal Submodule Microservice .gitignore Specification
+Save this exact block inside the absolute root folder of every single standalone microservice (e.g., payment-service/.gitignore, payment-api-gateway/.gitignore, notification-service/.gitignore):
+
+```
+# =========================================================================
+# Microservice Module Localized .gitignore Baseline
+# =========================================================================
+
+# Ignore all local compiled binary output targets completely
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Ignore AI background automation trackers and logs locally
+.agents/
+.claude/
+.github/
+.cline/
+.roo/
+*.log
+
+# Ignore IDE specific parameters
+.idea/
+.vscode/
+*.swp
+```
+
+## 3. Multi-Module Target and Agent Directory Cache-Purge Automation Sequence
+Run these localized terminal scripts sequentially across your sub-repository folders to execute historical index scrubbing:
+
+```
+powershell
+
+# =========================================================================
+# PHASE A: PURGE SHARED CONTRACTS CACHES
+# =========================================================================
+cd E:\Projects\payment-platform\shared-contracts
+git rm -r --cached **/target/ .agents/ .claude/ .github/ 2>$null
+git add .gitignore
+git commit -m "chore: flush accidental binary outputs and agent trackers from active tracking indexes"
+git push origin main
+
+# =========================================================================
+# PHASE B: PURGE PAYMENT API GATEWAY CACHES
+# =========================================================================
+cd E:\Projects\payment-platform\payment-api-gateway
+git rm -r --cached **/target/ .agents/ .claude/ .github/ 2>$null
+git add .gitignore
+git commit -m "chore: flush accidental binary outputs and agent trackers from active tracking indexes"
+git push origin main
+
+# =========================================================================
+# PHASE C: PURGE PAYMENT SERVICE CACHES
+# =========================================================================
+cd E:\Projects\payment-platform\payment-service
+git rm -r --cached **/target/ .agents/ .claude/ .github/ 2>$null
+git add .gitignore
+git commit -m "chore: flush accidental binary outputs and agent trackers from active tracking indexes"
+git push origin main
+
+# =========================================================================
+# PHASE D: PURGE NOTIFICATION SERVICE CACHES
+# =========================================================================
+cd E:\Projects\payment-platform\notification-service
+git rm -r --cached **/target/ .agents/ .claude/ .github/ 2>$null
+git add .gitignore
+git commit -m "chore: flush accidental binary outputs and agent trackers from active tracking indexes"
+git push origin main
+
+# =========================================================================
+# PHASE E: SYNCHRONIZE MASTER CONTROL PLANE
+# =========================================================================
+cd E:\Projects\payment-platform
+git rm -r --cached .agents/ .claude/ .github/ 2>$null
+git add .gitignore
+git commit -m "chore: solidify master orchestration index parameters"
+git push origin main
 ```
