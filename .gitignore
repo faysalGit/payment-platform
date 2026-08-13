@@ -1,11 +1,8 @@
-# Root Directory gitignore
-
 # =========================================================================
-# OpenSpec Root Repository .gitignore
+# OpenSpec Master Platform Root Repository .gitignore
 # =========================================================================
-# This configuration enforces the "Specification-Only" root repository pattern.
-# It explicitly prevents the root repository from tracking the 12 microservices,
-# which are managed as completely separate standalone Git repositories.
+# Enforces the "Specification-Only" orchestration pattern by preventing 
+# the parent plane from absorbing standalone decoupled sub-repositories.
 
 # Ignore all 12 operational microservice sub-repositories
 /payment-api-gateway/
@@ -21,8 +18,20 @@
 /shared-contracts/
 /payment-infrastructure/
 
+# =========================================================================
+# AI Autonomous Agent Transient & State Management Directories
+# =========================================================================
+.agents/
+.claude/
+.github/
+.cline/
+.roo/
+bin/
+obj/
 
-# Ignore local IDE metadata environments (preserving the explicit code-workspace)
+# =========================================================================
+# Local IDE Project Metadata Registries
+# =========================================================================
 .idea/
 .vscode/
 *.suo
@@ -30,13 +39,24 @@
 *.njsproj
 *.sln
 *.swp
+*.log
 
-# Ignore system-specific or OS transient files
+# =========================================================================
+# Global Compilations and Runtime Execution Binaries
+# =========================================================================
+target/
+**/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# =========================================================================
+# Core Operating System Transient Metadata Blocks
+# =========================================================================
 .DS_Store
 .DS_Store?
 ._*
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
-
