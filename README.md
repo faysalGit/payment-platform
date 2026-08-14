@@ -876,59 +876,65 @@ public class KafkaConsumerConfig {
 ```
 version: '3.8'
 
+networks:
+  platform-mesh:
+    driver: bridge
+
 services:
-  zookeeper:
+  zookeeper-node:
     image: confluentinc/cp-zookeeper:7.5.0
+    container_name: platform-zookeeper
+    networks: [ platform-mesh ]
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
-    ports:
-      - "2181:2181"
 
-  kafka:
+  kafka-broker:
     image: confluentinc/cp-kafka:7.5.0
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
+    container_name: platform-kafka-broker
+    depends_on: [ zookeeper-node ]
+    networks: [ platform-mesh ]
+    ports: [ "9092:9092" ]
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-node:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka-broker:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  redis:
+  redis-grid:
     image: redis:7.2-alpine
-    ports:
-      - "6379:6379"
+    container_name: platform-redis-idempotency
+    networks: [ platform-mesh ]
+    ports: [ "6379:6379" ]
     command: redis-server --appendonly yes
 
-  payment-db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: platform_user
-      POSTGRES_PASSWORD: secure_password_99
-      POSTGRES_DB: payment_ledger_core
+  platform-sqlserver-db:
+    image: ://microsoft.com
+    container_name: payment_platform_sqlserver
+    networks: [ platform-mesh ]
     ports:
-      - "5432:5432"
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "productionSecurityMasterPass987"
+    volumes:
+      - mssql_data:/var/opt/mssql
 
-  ledger-db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: platform_user
-      POSTGRES_PASSWORD: secure_password_99
-      POSTGRES_DB: bookkeeping_audit_core
+  platform-mongodb-nosql:
+    image: mongo:7.0
+    container_name: payment_platform_mongodb
+    networks: [ platform-mesh ]
     ports:
-      - "5433:5432"
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: platform_admin
+      MONGO_INITDB_ROOT_PASSWORD: productionSecurityMasterPass987
+    volumes:
+      - mongo_data:/data/db
 
-  analytics-db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: platform_user
-      POSTGRES_PASSWORD: secure_password_99
-      POSTGRES_DB: metrics_projection_core
-    ports:
-      - "5434:5432"
+volumes:
+  mssql_data:
+  mongo_data:
 ```
 
 ## Section 12: Merchant Dashboard Frontend Portal (payment-ui)
@@ -1003,29 +1009,33 @@ stages:
                 $(tag)
                 latest
 ```
-## Section 14: Centralized SQL Server Database Relational Schemas
+## Section 14: Centralized Polyglot Database Schemas (SQL Server & MongoDB)
 
-**1. Architectural Distribution Matrix**: To enforce strict boundaries, your system uses 4 distinct relational database catalogs inside your SQL Server cluster instance. No cross-database joins or distributed transactions (MSDTC) are allowed; all inter-service state changes communicate exclusively through Kafka event lines.
+**1. Polyglot Architecture & Distribution Matrix**: To enforce strict boundaries and harness the benefits of Polyglot Persistence, your system combines Relational (SQL Server) and NoSQL Document (MongoDB) database engines inside a unified ecosystem. Each microservice targets the exact storage paradigm that fits its business domain. No cross-database links are permitted; communication occurs exclusively via asynchronous Kafka message streams.
 
 **Interacting Microservice: payment-service**
    * Database Name: PaymentDb
-   * Key Target Tables: Payments, TransactionalOutbox
-   * Core Architectural Purpose: Captures initial transaction state and handles guaranteed outbox messaging. 
+   * Engine Type Option: SQL Server (Relational Table Model) OR MongoDB (NoSQL Document Model)
+   * Key Target Assets: Payments (Table/Collection), TransactionalOutbox (Table/Collection)
+   * Core Architectural Purpose: Captures initial transaction state and handles guaranteed transactional outbox messaging. Relational enforcement guarantees hard foreign constraints, while MongoDB document schemas allow rich metadata parsing from external processors (Stripe/Adyen response payloads) without schema migrations.. 
 
 **Interacting Microservice: ledger-service**
    * Database Name: LedgerDb
-   * Key Target Tables: LedgerEntries
-   * Core Architectural Purpose: Records immutable double-entry auditing lines.
+   * Engine Type Option: SQL Server (Strict Relational Engine)
+   * Key Target Assets: LedgerEntries (Table)
+   * Core Architectural Purpose: Records immutable, zero-sum double-entry financial accounting lines. Strict schema constraint verification is mandatory to prevent accounting drift.
 
 **Interacting Microservice: analytics-service**
    * Database Name: AnalyticsDb
-   * Key Target Tables: MerchantAnalyticsSummary
-   * Core Architectural Purpose: Stores fast, read-optimized performance aggregate projections.
+   * Engine Type Option: SQL Server (Relational Table Model) OR MongoDB (NoSQL Document Model)
+   * Key Target Assets: merchant_analytics (Collection)
+   * Core Architectural Purpose: Stores high-velocity, read-optimized performance aggregate matrices. MongoDB's atomic document operators (like \$inc) update cumulative volume counters concurrently without row-level lock contention.
 
 **Interacting Microservice: reconciliation-service**
    * Database Name: ReconciliationDb
-   * Key Target Tables: ReconciliationRecords
-   * Core Architectural Purpose: Cross-references system logs with bank reports to spot variances.
+   * Engine Type Option: SQL Server (Strict Relational Engine)
+   * Key Target Assets: ReconciliationRecords (Table)
+   * Core Architectural Purpose: Cross-references internal logs with external banking settlement text clearing sheets to catch balancing variances.
 
 **2. Database Allocation & Stateless Rationale**: A major tenet of engineering high-throughput event-driven systems is minimizing database dependencies. Of the 12 total repositories in your architecture, only 4 require dedicated relational databases because they own the long-term, authoritative system states. The remaining 8 repositories are designed to be completely database-free or rely on alternative memory grids:       
 
@@ -1200,4 +1210,96 @@ BEGIN
     ON dbo.ReconciliationRecords (IsBalanced, TransactionId);
 END
 GO
+```
+
+**4. NoSQL MongoDB Collection Schemas & JSON Data Layouts**: When provisioning document-oriented schemas for AnalyticsDb or mapping a NoSQL document alternative option for PaymentDb, structures are defined as flexible, JSON-compatible BSON records inside discrete collections.
+
+**A. Database: PaymentDb (NoSQL Document Option)**
+__Collection Name: payments__
+
+```
+json
+{
+  "_id": "tx_abc123456789",
+  "customerId": "cust_user_7755",
+  "amount": 275.00,
+  "currency": "USD",
+  "status": "CREATED",
+  "createdAt": "2026-08-14T22:50:00Z",
+  "updatedAt": null
+}
+```
+
+__Collection Name: transactional_outbox__
+
+```
+json
+{
+  "_id": "tx_abc123456789",
+  "customerId": "cust_user_7755",
+  "amount": 275.00,
+  "currency": "USD",
+  "status": "CREATED",
+  "createdAt": "2026-08-14T22:50:00Z",
+  "updatedAt": null
+}
+```
+***Indexing Requirement: To protect transactional safety and optimize polling throughput, you must configure a compound index pattern targeting { "status": 1, "createdAt": 1 }.***
+
+**B. Database: AnalyticsDb (Asynchronous Telemetry Document Datastore)**
+__Collection Name: merchant_analytics__
+
+```
+json
+{
+  "_id": "merchant_enterprise_99",
+  "balances": [
+    {
+      "currency": "USD",
+      "totalVolume": 450000.50,
+      "successCount": 1820,
+      "failureCount": 34
+    },
+    {
+      "currency": "EUR",
+      "totalVolume": 120000.00,
+      "successCount": 450,
+      "failureCount": 5
+    }
+  ],
+  "lastUpdatedAt": "2026-08-14T22:55:30Z"
+}
+```
+***Atomic Operation Guide: Upstream stream listeners can execute non-blocking aggregate calculations concurrently via \$inc operators without placing thread blocks on parallel transactions: db.merchant_analytics.updateOne({ _id: "M101", "balances.currency": "USD" }, { \$inc: { "balances.\$.totalVolume": 150.00, "balances.\$.successCount": 1 } }).***
+
+**5. Central Infrastructure Docker-Compose Multi-Database Ingestion Topologies**: To run both database environments inside your local testing workspace sandbox simultaneously, append these container images definitions directly into your centralized **payment-infrastructure/docker-compose.yml** file grid layout:
+
+```
+  # Enterprise Relational Datastore Tier
+  platform-sqlserver-db:
+    image: ://microsoft.com
+    container_name: payment_platform_sqlserver
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Secure_Password_SqlServer_99"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+  # Enterprise NoSQL Document Datastore Tier
+  platform-mongodb-nosql:
+    image: mongo:7.0
+    container_name: payment_platform_mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: platform_admin
+      MONGO_INITDB_ROOT_PASSWORD: secure_mongo_password_99
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mssql_data:
+  mongo_data:
 ```
