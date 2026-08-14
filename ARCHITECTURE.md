@@ -307,4 +307,128 @@ The platform isolates authorization checking entirely within the perimeter layer
 * Centralized Edge Validation: Individual downstream processing containers (like payment-worker or provider-router-service) are completely insulated from parsing authorization database structures or executing user profile queries. The perimeter payment-api-gateway intercepts every incoming HTTP request, validates its digital signature against a cryptographically signed cryptographic JWT public key, extracts scopes, and attaches a sanitized transaction context downstream.
 * Stateless Scaling Loop Advantages: Because token verification is handled mathematically at the gateway boundary, downstream business microservices operate completely state-free. They do not waste memory buffers or introduce network connection bottlenecks by constantly making cross-network requests back to a central session tracking database, allowing the entire Kubernetes pod replica ecosystem to scale up block-freely.
 
+------------------------------
+## 10. Global Observability, Centralized Logging & APM Framework
+To provide full-stack visibility across the 12-repository topology, the platform leverages Spring Boot 3's native observability infrastructure driven by Micrometer and Micrometer Tracing. This architecture unifies application runtime indicators into three foundational observability signals: logs, metrics, and traces.
 
+## A. Correlation Architecture: Trace ID Log Injection
+When a request hits the perimeter layer or an event is consumed from a Kafka topic, a distributed context is evaluated. Micrometer Tracing manages trace propagation across network boundaries using the standard W3C trace context format.
+When a tracing framework is present on the application classpath, Spring Boot automatically alters the internal Logback configuration engine to append the transaction's unique trace_id and span_id directly to every console output log line. This injection guarantees that disparate log events across separate services share identical contextual correlation anchors.
+
+## B. Centralized Logging Integration with Splunk
+To collect and index streaming machine-generated data profiles across the microservice mesh, two integration patterns are supported:
+    1. OpenTelemetry Collector Pipeline (Vendor-Agnostic): Each microservice streams vendor-neutral OpenTelemetry Protocol (OTLP) formatted log and trace wrappers over HTTP/gRPC onto a localized Splunk OpenTelemetry Collector daemon. The collector safely batches, aggregates, and transforms the inputs before shipping them up to your enterprise Splunk indexers.
+    
+    2. Container Native Splunk Logging Driver: For decoupled container deployments, individual microservice workloads emit raw JSON logs to standard output (stdout). The container configuration file sets the global log-driver parameter to splunk. Using your dedicated Splunk HTTP Event Collector (HEC) token identifier and URL path, the container engine securely pipes console data streams straight to your cloud indexes without needing third-party logging jars inside your clean application classpath.
+
+## C. Advanced Application Performance Monitoring (APM) with Dynatrace
+Deep runtime analytics, automated threat mapping, and transaction profiling are achieved using a multi-tier attachment strategy:
+    1. Dynatrace OneAgent Injection: OneAgent runs directly on your underlying VM nodes or is deployed as a Kubernetes DaemonSet wrapper. It hooks block-freely into the JVM runtime, tracing bytecode execution graphs and mapping performance patterns across communication layers without requiring programmatic changes.
+
+    2. Micrometer Metric Registry Export: To feed deep JVM analytics directly into downstream monitoring grids, the microservices attach the public io.micrometer:micrometer-registry-dynatrace library module. This component captures memory footprints, garbage collection spikes, and connection constraints, redirecting them asynchronously to the Dynatrace SaaS metric ingestion layer.
+
+    3. Grail Lakehouse Log Ingestion: Using native OTLP data streaming protocols, the applications stream structured logs directly to the Dynatrace Grail data lakehouse via its secure /api/v2/otlp/v1/logs endpoints. By housing logs, traces, and metrics inside a single analytics lakehouse, teams can run high-speed cross-correlation logic to pinpoint root causes instantly during runtime incidents.
+
+## D. The Open-Source LGTM Stack (Grafana, Loki, Tempo, Mimir)
+For complete open-source visual panel control, the platform can be seamlessly wired directly to a standard Grafana LGTM visualization matrix:
+
+    * Metrics via Prometheus/Mimir: Microservices include the io.micrometer:micrometer-registry-prometheus dependency and expose the secure scraping endpoint /actuator/prometheus via Spring Boot Actuator settings. A centralized Prometheus instance polls these paths on a strict timeline, gathering time-series health records.
+
+    * Logs via Grafana Loki: Lightweight shipping agents (such as Fluent Bit or Promtail) track container standard output folders, indexing lines solely by high-level metadata variables (app, env), and streaming them to Grafana Loki for cost-efficient storage.
+
+    * Traces via Grafana Tempo: Use-case orchestration actions stream precise trace execution paths over OTLP connections onto Grafana Tempo's distributed storage layer.
+
+Inside the Grafana visualization dashboard UI, these layers function as a unified monitoring matrix. Because every data layer shares the exact same contextual correlation tags (trace_id, span_id) injected by Spring Boot at request intake, an engineer can select a sudden latency outlier spike inside a Prometheus latency graph, immediately pull up the corresponding application console log text lines in Loki for that specific millisecond window, and open a complete distributed trace graph visualization inside Tempo to locate the exact class or database query causing the system delay.    
+
+## 11. Centralized Global Exception Handling & Error Translation Framework
+To safeguard our strict Clean Architecture boundaries and avoid leaking raw infrastructure exceptions or stack traces to external perimeter nodes, the platform establishes a centralized controller advice defense wall within the web/entry-point layers of individual business services.
+
+## The Architectural Exception Translation Pattern
+
+## Tier A: Inbound HTTP REST Edge Protection (@RestControllerAdvice)
+When an error occurs deep inside an inner layer (e.g., a database connection drop in a persistence adapter or an out-of-bounds entity state rule failure inside a business use case), the code throws a custom, lightweight Domain Exception (such as IdempotencyLockException or TransactionNotFoundException).
+
+These exceptions bypass standard intermediate interceptors and bubble up to the perimeter web boundary, where they are caught by an application-wide @RestControllerAdvice engine. The handler unrolls the exception payload, translates the internal domain state code into a synchronized public RFC-7807 Problem Details compliant JSON document object model, maps it to a standard HTTP status code (e.g., 409 Conflict, 422 Unprocessable Entity), and logs the diagnostic trace footprint block-freely.
+
+# Implementation Blueprint Example
+Each business microservice contains this baseline global web advisor configuration structure inside its inbound infrastructure REST packages:
+
+```
+package com.payment.platform.payment.infrastructure.web;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import java.net.URI;
+import java.time.Instant;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleInvalidInput(IllegalArgumentException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.BAD_REQUEST, 
+            ex.getMessage()
+        );
+        problem.setTitle("Invalid Transaction Parameters");
+        problem.setType(URI.create("https://payment-platform.com"));
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleGenericFailure(Exception ex) {
+        // Obfuscate raw code blocks from external networks while logging traces locally via MDC
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "An unexpected transactional error occurred on our processing rails."
+        );
+        problem.setTitle("Internal Processing Error");
+        problem.setType(URI.create("https://payment-platform.com"));
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+}
+```
+
+## Tier B: Asynchronous Kafka Consumer Stream Protection (DefaultErrorHandler)
+For pure event-driven microservices without HTTP endpoints (payment-worker, fraud-service, ledger-service, analytics-service, reconciliation-service, and notification-service), synchronous REST exception advisors do not execute.If an unhandled exception occurs inside a Kafka listener method (such as an intermittent database lock up or a corrupt payload mapping), the error is handled globally at the broker message ingestion layer by overriding Spring Kafka's standard fallback behaviors with a programmatic DefaultErrorHandler combined with a DeadLetterPublishingRecoverer. This framework safely insulates the streaming threads: it tracks failed execution attempts, enforces non-blocking retries, and securely isolates poison-pill payloads into an explicit Dead Letter Topic (DLT) once retries are exhausted, allowing partition indexing to continue without dropping rows or freezing clusters.
+
+Implementation Configuration Blueprint:
+
+## Core Benefits of this Invariant Model
+```
+package com.payment.platform.infrastructure.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.util.backoff.FixedBackOff;
+
+@Configuration
+public class KafkaConsumerConfig {
+
+    @Bean
+    public DefaultErrorHandler errorHandler(KafkaTemplate<Object, Object> template) {
+        // Intercepts consumer thread crashes, executes 3 retries with a 1-second fixed delay backoff,
+        // then routes the poison-pill message automatically to a suffix-mapped "*.DLT" channel.
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
+        
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3L));
+        
+        // Tells the container to commit the recovered state offset index so processing doesn't stall loop
+        errorHandler.setCommitRecovered(true);
+        
+        return errorHandler;
+    }
+}
+
+```
+
+* Security & Obfuscation: It catches generic unhandled system exceptions (Exception.class) and strips away underlying database driver trace text strings, file names, and memory pointers before returning the response payload across the API gateway. This effectively prevents attackers from mapping out structural dependencies through malicious field manipulation.
+
+* Clean Contract Compliance: Returning standardized ProblemDetail structures ensures that your React frontend portal (payment-ui) parses identical, predictable error dictionaries whether it encounters a client input error from the payment-service or a gateway tracking block inside the provider-router-service.

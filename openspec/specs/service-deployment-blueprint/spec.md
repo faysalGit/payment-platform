@@ -330,53 +330,28 @@ target/
 ```
 
 ## 3. Multi-Module Target and Agent Directory Cache-Purge Automation Sequence
-Run these localized terminal scripts sequentially across your sub-repository folders to execute historical index scrubbing:
+Run these localized terminal scripts sequentially across your sub-repository folders to build all repositories in your local
 
 ```
 powershell
 
-# =========================================================================
-# PHASE A: PURGE SHARED CONTRACTS CACHES
-# =========================================================================
-cd E:\Projects\payment-platform\shared-contracts
-git rm -r --cached **/target/ .agents/ .claude/ .github/ 2>$null
-git add .gitignore
-git commit -m "chore: flush accidental binary outputs and agent trackers from active tracking indexes"
-git push origin main
+# Core Contract Models & Libraries
+cd E:\Projects\payment-platform\shared-contracts; mvn clean install
 
-# =========================================================================
-# PHASE B: PURGE PAYMENT API GATEWAY CACHES
-# =========================================================================
-cd E:\Projects\payment-platform\payment-api-gateway
-git rm -r --cached **/target/ .agents/ .claude/ .github/ 2>$null
-git add .gitignore
-git commit -m "chore: flush accidental binary outputs and agent trackers from active tracking indexes"
-git push origin main
+# Synchronous REST API Ingestion Layers & Gateways
+cd E:\Projects\payment-platform\payment-api-gateway; mvn clean compile -o
+cd E:\Projects\payment-platform\payment-service; mvn clean compile -o
+cd E:\Projects\payment-platform\provider-router-service; mvn clean compile -o
 
-# =========================================================================
-# PHASE C: PURGE PAYMENT SERVICE CACHES
-# =========================================================================
-cd E:\Projects\payment-platform\payment-service
-git rm -r --cached **/target/ .agents/ .claude/ .github/ 2>$null
-git add .gitignore
-git commit -m "chore: flush accidental binary outputs and agent trackers from active tracking indexes"
-git push origin main
+# Asynchronous Kafka Consumer Processing Daemons
+cd E:\Projects\payment-platform\fraud-service; mvn clean compile -o
+cd E:\Projects\payment-platform\payment-worker; mvn clean compile -o
+cd E:\Projects\payment-platform\notification-service; mvn clean compile -o
+cd E:\Projects\payment-platform\ledger-service; mvn clean compile -o
+cd E:\Projects\payment-platform\analytics-service; mvn clean compile -o
+cd E:\Projects\payment-platform\reconciliation-service; mvn clean compile -o
 
-# =========================================================================
-# PHASE D: PURGE NOTIFICATION SERVICE CACHES
-# =========================================================================
-cd E:\Projects\payment-platform\notification-service
-git rm -r --cached **/target/ .agents/ .claude/ .github/ 2>$null
-git add .gitignore
-git commit -m "chore: flush accidental binary outputs and agent trackers from active tracking indexes"
-git push origin main
+# Support Environments & Orchestration Hub
+cd E:\Projects\payment-platform\payment-infrastructure; mvn clean compile -o
 
-# =========================================================================
-# PHASE E: SYNCHRONIZE MASTER CONTROL PLANE
-# =========================================================================
-cd E:\Projects\payment-platform
-git rm -r --cached .agents/ .claude/ .github/ 2>$null
-git add .gitignore
-git commit -m "chore: solidify master orchestration index parameters"
-git push origin main
 ```
