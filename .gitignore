@@ -40,6 +40,8 @@ obj/
 *.sln
 *.swp
 *.log
+.vs
+
 
 # =========================================================================
 # Global Compilations and Runtime Execution Binaries
