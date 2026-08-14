@@ -355,3 +355,84 @@ cd E:\Projects\payment-platform\reconciliation-service; mvn clean compile -o
 cd E:\Projects\payment-platform\payment-infrastructure; mvn clean compile -o
 
 ```
+
+## 4. Multi-Module Target and Agent Directory Cache-Purge Automation Sequence for git
+Run these localized terminal scripts sequentially across your sub-repository folders to build all repositories in your local
+
+# 1. Synchronize shared-contracts
+cd E:\Projects\payment-platform\shared-contracts
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "chore: align payment and fraud core record payload schemas"; git push origin main }
+
+# 2. Synchronize payment-api-gateway
+cd E:\Projects\payment-platform\payment-api-gateway
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "infra: establish edge perimeter proxy routing and security rules"; git push origin main }
+
+# 3. Synchronize payment-service
+cd E:\Projects\payment-platform\payment-service
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "feat: establish global exception handling advice wall and topic configs"; git push origin main }
+
+# 4. Synchronize fraud-service
+cd E:\Projects\payment-platform\fraud-service
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "feat: implement consumer error handler and reposition messaging packages"; git push origin main }
+
+# 5. Synchronize payment-worker
+cd E:\Projects\payment-platform\payment-worker
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "feat: configure worker async consumer default error handling limits"; git push origin main }
+
+# 6. Synchronize provider-router-service
+cd E:\Projects\payment-platform\provider-router-service
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "feat: add localized WebClient response exception translations"; git push origin main }
+
+# 7. Synchronize notification-service
+cd E:\Projects\payment-platform\notification-service
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "feat: arm notification consumer with fallback dead letter configuration"; git push origin main }
+
+# 8. Synchronize ledger-service
+cd E:\Projects\payment-platform\ledger-service
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "feat: secure bookkeeping consumers with automatic DLT recovery"; git push origin main }
+
+# 9. Synchronize analytics-service
+cd E:\Projects\payment-platform\analytics-service
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "feat: establish global stream processing error handler boundary"; git push origin main }
+
+# 10. Synchronize reconciliation-service
+cd E:\Projects\payment-platform\reconciliation-service
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "feat: apply programmatic retry policies to audit matching consumers"; git push origin main }
+
+# 11. Synchronize payment-infrastructure
+cd E:\Projects\payment-platform\payment-infrastructure
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "infra: formalize central compose topologies and pre-flight validation rules"; git push origin main }
+
+# 12. Synchronize payment-ui
+cd E:\Projects\payment-platform\payment-ui
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "chore: apply clean .gitignore filters and resolve dashboard styling typos"; git push origin main }
+
+# 13. Synchronize Master Parent Orchestration Root Repository (payment-platform)
+cd E:\Projects\payment-platform
+git add .
+git diff-index --quiet HEAD --
+if ($LASTEXITCODE -ne 0) { git commit -m "chore: synchronize root workspace tracking hashes for all 12 submodules"; git push origin main }
