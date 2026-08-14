@@ -117,8 +117,7 @@ In high-volume distributed microservices architectures and Spec-Driven Developme
 
 
 ## Section 1: Central Data Contract Library (shared-contracts)1. 
-**1. Purpose & Scope**
-This repository operates as the absolute domain contract and data schema foundation for the entire platform workspace. To maximize flexibility, readability, and portability, it is designed to be completely framework-free, containing zero external runtime dependencies on Spring Boot, Spring Kafka, or database persistence engines. It distributes unified, unalterable plain Java event structures across out-of-process boundaries via classpath JAR injection.
+**1. Purpose & Scope**: This repository operates as the absolute domain contract and data schema foundation for the entire platform workspace. To maximize flexibility, readability, and portability, it is designed to be completely framework-free, containing zero external runtime dependencies on Spring Boot, Spring Kafka, or database persistence engines. It distributes unified, unalterable plain Java event structures across out-of-process boundaries via classpath JAR injection.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\shared-contracts\
@@ -184,8 +183,7 @@ public record FraudEvaluatedEvent(
 ```
 
 ## Section 2: Edge Perimeter API Gateway (payment-api-gateway)
-**1. Purpose & Scope**
-This repository establishes your edge routing proxy boundaries on public port 8080. It secures inbound traffic by validating OAuth2 JWT tokens, mandates the presence of a non-empty Idempotency-Key header for mutations, routes traffic non-blockingly, and injects invariant X-Correlation-ID markers into downstream request threads to ensure end-to-end tracing across service boundaries.
+**1. Purpose & Scope**: This repository establishes your edge routing proxy boundaries on public port 8080. It secures inbound traffic by validating OAuth2 JWT tokens, mandates the presence of a non-empty Idempotency-Key header for mutations, routes traffic non-blockingly, and injects invariant X-Correlation-ID markers into downstream request threads to ensure end-to-end tracing across service boundaries.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\payment-api-gateway\
@@ -241,8 +239,7 @@ spring:
 ```
 
 ## Section 3: Core Transaction Ingestion Service (payment-service)
-**1. Purpose & Scope**
-Serves as your primary synchronous REST transaction ingestion API engine on port 8081. Following a strict Clean Architecture pattern, it converts incoming JSON web payloads into framework-insulated domain entities, records payment intents safely into a relational database outbox table, and wraps the web layer in global HTTP exception handling walls.
+**1. Purpose & Scope**: Serves as your primary synchronous REST transaction ingestion API engine on port 8081. Following a strict Clean Architecture pattern, it converts incoming JSON web payloads into framework-insulated domain entities, records payment intents safely into a relational database outbox table, and wraps the web layer in global HTTP exception handling walls.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\payment-service\
@@ -378,8 +375,7 @@ public class KafkaTopicConfig {
 ```
 
 ## Section 4: Risk Evaluation Engine Service (fraud-service)
-**1. Purpose & Scope**
-Operates on port 8083 as an asynchronous stream filter. It processes incoming transaction initialization alerts from Kafka, handles context logging blocks via MDC tracing scopes, computes velocity indicators, and encapsulates streaming failures inside local consumer error handlers.
+**1. Purpose & Scope**: Operates on port 8083 as an asynchronous stream filter. It processes incoming transaction initialization alerts from Kafka, handles context logging blocks via MDC tracing scopes, computes velocity indicators, and encapsulates streaming failures inside local consumer error handlers.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\fraud-service\
@@ -506,8 +502,7 @@ public class PaymentEventKafkaConsumer {
 ```
 
 ## Section 5: Asynchronous Processing Orchestrator (payment-worker)
-**1. Purpose & Scope**
-Runs on port 8084 to handle multi-step payment execution. It listens for risk verification signals, locks atomic idempotency tokens inside Redis via transaction strings to prevent execution races, invokes out-of-process bank rails, and emits definitive settlement signals onto the Kafka cluster mesh.
+**1. Purpose & Scope**: Runs on port 8084 to handle multi-step payment execution. It listens for risk verification signals, locks atomic idempotency tokens inside Redis via transaction strings to prevent execution races, invokes out-of-process bank rails, and emits definitive settlement signals onto the Kafka cluster mesh.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\payment-worker\
@@ -555,8 +550,7 @@ public class KafkaConsumerConfig {
 }
 ```
 ## Section 6: Stateless Provider Router Service (provider-router-service)
-**1. Purpose & Scope**
-An isolated outbound proxy router operating on port 8085. It exposes a stateless ingestion API endpoint to the worker, dynamically evaluates transactional routing metrics, and manages standard form-urlencoded integration envelopes across banking networks via reactive, non-blocking WebClient handlers.
+**1. Purpose & Scope**: An isolated outbound proxy router operating on port 8085. It exposes a stateless ingestion API endpoint to the worker, dynamically evaluates transactional routing metrics, and manages standard form-urlencoded integration envelopes across banking networks via reactive, non-blocking WebClient handlers.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\provider-router-service\
@@ -622,8 +616,7 @@ public class WebClientBankingGatewayClient implements BankingGatewayClient {
 ```
 
 ## Section 7: Notification Alert Engine (notification-service)
-**1. Purpose & Scope**
-Acts as an asynchronous messaging fan-out daemon running on port 8086. It intercepts payment-succeeded and payment-failed event metrics across the broker cluster, executes localized user template mapping lookups, and triggers outbound customer alerting receipts.
+**1. Purpose & Scope**: Acts as an asynchronous messaging fan-out daemon running on port 8086. It intercepts payment-succeeded and payment-failed event metrics across the broker cluster, executes localized user template mapping lookups, and triggers outbound customer alerting receipts.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\provider-router-service\
@@ -674,8 +667,7 @@ public class KafkaConsumerConfig {
 ```
 
 ## Section 8: Immutable Financial Core (ledger-service)
-**1. Purpose & Scope**
-Maintains complete platform audit and double-entry accounting integrity on port 8087. It consumes final terminal settlement records from the broker mesh and generates zero-sum DEBIT/CREDIT ledger records, throwing hard errors on any manual data mutation attempts.
+**1. Purpose & Scope**: Maintains complete platform audit and double-entry accounting integrity on port 8087. It consumes final terminal settlement records from the broker mesh and generates zero-sum DEBIT/CREDIT ledger records, throwing hard errors on any manual data mutation attempts.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\ledger-service\
@@ -764,8 +756,7 @@ public class KafkaConsumerConfig {
 ```
 
 ## Section 9: Real-Time Analytics Stream (analytics-service)
-**1. Purpose & Scope**
-Operating as a read-optimized query manager on port 8088, this repository intercept final transaction outcomes non-blockingly. It executes high-speed analytical counters updates inside sliding time windows to power live reporting panels while insulating write-heavy cores from table locking contention.
+**1. Purpose & Scope**: Operating as a read-optimized query manager on port 8088, this repository intercept final transaction outcomes non-blockingly. It executes high-speed analytical counters updates inside sliding time windows to power live reporting panels while insulating write-heavy cores from table locking contention.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\analytics-service\
@@ -814,8 +805,7 @@ public class KafkaConsumerConfig {
 ```
 
 ## Section 10: Automated Balancing Core (reconciliation-service)
-**1. Purpose & Scope**
-Operates on port 8089 as an automated system audit checker. It continuously consumes terminal transaction logs and triggers automated batch cross-referencing against external banking settlement records to track variance lines and isolate balancing discrepancies.
+**1. Purpose & Scope**: Operates on port 8089 as an automated system audit checker. It continuously consumes terminal transaction logs and triggers automated batch cross-referencing against external banking settlement records to track variance lines and isolate balancing discrepancies.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\reconciliation-service\
@@ -865,8 +855,7 @@ public class KafkaConsumerConfig {
 ```
 
 ## Section 11: Environment Automation Hub (payment-infrastructure)
-**1. Purpose & Scope**
-This repository operates on port 8090 as your centralized operational automation workspace hub. It isolates system topology definitions from business application logic, containing your master local docker orchestration configurations and pre-deployment health check utilities.
+**1. Purpose & Scope**: This repository operates on port 8090 as your centralized operational automation workspace hub. It isolates system topology definitions from business application logic, containing your master local docker orchestration configurations and pre-deployment health check utilities.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\payment-infrastructure\
@@ -943,8 +932,7 @@ services:
 ```
 
 ## Section 12: Merchant Dashboard Frontend Portal (payment-ui)
-**1. Purpose & Scope**
-Serves as the central administration reporting portal and telemetry dashboard running on local port 3000. Built using React and TypeScript, it communicates non-blockingly with the API perimeter gateway and tracks real-time settlement volumes.
+**1. Purpose & Scope**: Serves as the central administration reporting portal and telemetry dashboard running on local port 3000. Built using React and TypeScript, it communicates non-blockingly with the API perimeter gateway and tracks real-time settlement volumes.
 
 **2. Physical Layout Tree Matrix**
    * Target Workspace Path: \payment-platform\payment-ui\
