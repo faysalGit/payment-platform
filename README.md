@@ -1003,3 +1003,201 @@ stages:
                 $(tag)
                 latest
 ```
+## Section 14: Centralized SQL Server Database Relational Schemas
+
+**1. Architectural Distribution Matrix**: To enforce strict boundaries, your system uses 4 distinct relational database catalogs inside your SQL Server cluster instance. No cross-database joins or distributed transactions (MSDTC) are allowed; all inter-service state changes communicate exclusively through Kafka event lines.
+
+**Interacting Microservice: payment-service**
+   * Database Name: PaymentDb
+   * Key Target Tables: Payments, TransactionalOutbox
+   * Core Architectural Purpose: Captures initial transaction state and handles guaranteed outbox messaging. 
+
+**Interacting Microservice: ledger-service**
+   * Database Name: LedgerDb
+   * Key Target Tables: LedgerEntries
+   * Core Architectural Purpose: Records immutable double-entry auditing lines.
+
+**Interacting Microservice: analytics-service**
+   * Database Name: AnalyticsDb
+   * Key Target Tables: MerchantAnalyticsSummary
+   * Core Architectural Purpose: Stores fast, read-optimized performance aggregate projections.
+
+**Interacting Microservice: reconciliation-service**
+   * Database Name: ReconciliationDb
+   * Key Target Tables: ReconciliationRecords
+   * Core Architectural Purpose: Cross-references system logs with bank reports to spot variances.
+
+**2. Database Allocation & Stateless Rationale**: A major tenet of engineering high-throughput event-driven systems is minimizing database dependencies. Of the 12 total repositories in your architecture, only 4 require dedicated relational databases because they own the long-term, authoritative system states. The remaining 8 repositories are designed to be completely database-free or rely on alternative memory grids:       
+
+__Why the Other 8 Repositories Do Not Require Databases__
+shared-contracts: This is a pure compilation-time Java data library (JAR), not an active runtime microservice. It contains zero state or executing processes.
+
+payment-api-gateway: A completely stateless perimeter reverse proxy router. Its configuration parameters are loaded dynamically via in-memory property sheets (application.yml), and JWT cryptographic security verifications happen inline without querying a database.
+
+fraud-service: Designed as a pure inline streaming calculator. It reads an active event string from Kafka, evaluates swift velocity mathematical scoring rules in-memory, and instantly publishes its evaluation results back onto a different Kafka topic, requiring no persistent storage tier.
+
+payment-worker: This state machine orchestrator offloads permanent storage duties to the payment-service. Instead of a relational database, it relies exclusively on an in-memory Redis distributed cache to manage transient operations, lock unique idempotency strings, and handle fast synchronization flags.
+
+provider-router-service: A 100% stateless proxy network handler. It acts as an integration translator, marshalling variables into standard form-urlencoded parameters and pushing them over HTTP WebClient connections to external card networks (Stripe/Adyen) without recording records locally.
+
+notification-service: An asynchronous consumer daemon. It reads finalized transaction success/failure notifications, maps data properties to notification string formats, and pushes alerts directly to external communication brokers (SMTP/Twilio) block-freely.
+
+payment-infrastructure: An operational environment orchestration hub. It houses your Docker Compose scripts, Kubernetes deployment charts, and environment bootstrap connectivity utilities, but holds no active production business data records.
+
+payment-ui: A static Single Page Application (SPA) frontend interface built in React. It executes entirely inside your client browser sandbox windows, retrieving state data through API endpoints rather than connecting to a database.
+
+**3. Complete Transact-SQL (T-SQL) Production Initialization Script**
+
+```
+-- =================================================================================
+-- MICROSERVICES DATABASE PROVISIONING SCRIPT FOR MICROSOFT SQL SERVER
+-- =================================================================================
+
+-- ---------------------------------------------------------------------------------
+-- 1. DATABASE: PaymentDb (Owned exclusively by payment-service)
+-- ---------------------------------------------------------------------------------
+USE master;
+GO
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'PaymentDb')
+BEGIN
+    CREATE DATABASE PaymentDb;
+END
+GO
+USE PaymentDb;
+GO
+
+-- Core transactions processing table
+IF OBJECT_ID('dbo.Payments', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Payments (
+        TransactionId VARCHAR(50) NOT NULL,
+        CustomerId VARCHAR(50) NOT NULL,
+        Amount DECIMAL(18, 4) NOT NULL,
+        Currency VARCHAR(3) NOT NULL,
+        [Status] VARCHAR(20) NOT NULL,
+        CreatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
+        UpdatedAt DATETIMEOFFSET NULL,
+        CONSTRAINT PK_Payments PRIMARY KEY CLUSTERED (TransactionId)
+    );
+END
+GO
+
+-- Transactional Outbox Table for Guaranteed Event Delivery
+IF OBJECT_ID('dbo.TransactionalOutbox', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.TransactionalOutbox (
+        EventId UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+        AggregateType VARCHAR(50) NOT NULL,
+        AggregateId VARCHAR(50) NOT NULL,
+        EventType VARCHAR(100) NOT NULL,
+        Payload NVARCHAR(MAX) NOT NULL,
+        [Status] VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        CreatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
+        ProcessedAt DATETIMEOFFSET NULL,
+        CONSTRAINT PK_TransactionalOutbox PRIMARY KEY CLUSTERED (EventId)
+    );
+    
+    -- Index to accelerate outbox polling mechanism loops
+    CREATE NONCLUSTERED INDEX IX_TransactionalOutbox_Status_CreatedAt 
+    ON dbo.TransactionalOutbox ([Status], CreatedAt) 
+    INCLUDE (AggregateType, AggregateId, EventType);
+END
+GO
+
+
+-- ---------------------------------------------------------------------------------
+-- 2. DATABASE: LedgerDb (Owned exclusively by ledger-service)
+-- ---------------------------------------------------------------------------------
+USE master;
+GO
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'LedgerDb')
+BEGIN
+    CREATE DATABASE LedgerDb;
+END
+GO
+USE LedgerDb;
+GO
+
+-- Immutable Bookkeeping Entry Records Logs
+IF OBJECT_ID('dbo.LedgerEntries', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.LedgerEntries (
+        EntryId VARCHAR(50) NOT NULL,
+        TransactionId VARCHAR(50) NOT NULL,
+        AccountId VARCHAR(50) NOT NULL,
+        Amount DECIMAL(18, 4) NOT NULL,
+        EntryType VARCHAR(10) NOT NULL, -- 'DEBIT' or 'CREDIT'
+        [Timestamp] DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
+        CONSTRAINT PK_LedgerEntries PRIMARY KEY CLUSTERED (EntryId),
+        CONSTRAINT CHK_LedgerEntries_Type CHECK (EntryType IN ('DEBIT', 'CREDIT'))
+    );
+
+    -- Non-clustered indexing to ensure swift cross-transaction audits
+    CREATE NONCLUSTERED INDEX IX_LedgerEntries_TransactionId ON dbo.LedgerEntries (TransactionId);
+    CREATE NONCLUSTERED INDEX IX_LedgerEntries_AccountId_Timestamp ON dbo.LedgerEntries (AccountId, [Timestamp]);
+END
+GO
+
+
+-- ---------------------------------------------------------------------------------
+-- 3. DATABASE: AnalyticsDb (Owned exclusively by analytics-service)
+-- ---------------------------------------------------------------------------------
+USE master;
+GO
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'AnalyticsDb')
+BEGIN
+    CREATE DATABASE AnalyticsDb;
+END
+GO
+USE AnalyticsDb;
+GO
+
+-- Read-Optimized Real-Time Merchant Aggregates Projection Matrix
+IF OBJECT_ID('dbo.MerchantAnalyticsSummary', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.MerchantAnalyticsSummary (
+        MerchantId VARCHAR(50) NOT NULL,
+        Currency VARCHAR(3) NOT NULL,
+        TotalVolume DECIMAL(18, 4) NOT NULL DEFAULT 0.0000,
+        SuccessCount INT NOT NULL DEFAULT 0,
+        FailureCount INT NOT NULL DEFAULT 0,
+        LastUpdatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
+        CONSTRAINT PK_MerchantAnalyticsSummary PRIMARY KEY CLUSTERED (MerchantId, Currency)
+    );
+END
+GO
+
+
+-- ---------------------------------------------------------------------------------
+-- 4. DATABASE: ReconciliationDb (Owned exclusively by reconciliation-service)
+-- ---------------------------------------------------------------------------------
+USE master;
+GO
+IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'ReconciliationDb')
+BEGIN
+    CREATE DATABASE ReconciliationDb;
+END
+GO
+USE ReconciliationDb;
+GO
+
+-- Financial Balancing and Audit Verification Ledger Records
+IF OBJECT_ID('dbo.ReconciliationRecords', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ReconciliationRecords (
+        ReconciliationId VARCHAR(50) NOT NULL,
+        TransactionId VARCHAR(50) NOT NULL,
+        InternalStatus VARCHAR(20) NOT NULL,
+        ExternalStatus VARCHAR(20) NOT NULL,
+        IsBalanced BIT NOT NULL DEFAULT 0,
+        DiscrepancyReason NVARCHAR(255) NULL,
+        CheckedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
+        CONSTRAINT PK_ReconciliationRecords PRIMARY KEY CLUSTERED (ReconciliationId)
+    );
+
+    -- Indexing for tracking open settlement anomalies or balancing gaps
+    CREATE NONCLUSTERED INDEX IX_ReconciliationRecords_IsBalanced_TransactionId 
+    ON dbo.ReconciliationRecords (IsBalanced, TransactionId);
+END
+GO
+```
