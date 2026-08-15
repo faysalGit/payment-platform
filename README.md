@@ -1303,3 +1303,90 @@ volumes:
   mssql_data:
   mongo_data:
 ```
+
+## Section 15: End-to-End Transaction Testing & Event Trace Sandbox Scripts
+
+**1. Pre-Flight Test Environment Setup Verification**: Before initiating transaction scripts, open your local terminal panel to ensure all backend multi-mesh cluster dependencies are running inside your isolated bridge network:
+```
+cd \payment-platform\payment-infrastructure
+docker-compose up -d
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+```
+***(Verify that platform-kafka-broker, platform-redis-idempotency, payment_platform_sqlserver, and payment_platform_mongodb are marked as up).***
+
+**2. Scenario A: Standard Approved Transaction Lifecycle Sweep**:This scenario simulates a successful payment ingestion path. It exercises the synchronous edge perimeter gateway, asynchronous velocity evaluation, worker cache-locking orchestration, and polyglot ledger/analytics insertions.
+
+__Step 1: Initiate Transaction HTTP POST via API Gateway__
+Execute this PowerShell request to send an authorized $250.00 charge payload through the edge perimeter proxy on port 8080:
+```
+$headers = @{
+    "Authorization" = "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJpc3MiOiJodHRwczovL21pY3Jvc29mdG9ubGluZS5jb20iLCJzdWIiOiJ1c3JfMDAxIn0.sig"
+    "Idempotency-Key" = "idemp_key_success_99911"
+    "X-Correlation-ID" = "corr_trace_clean_000A"
+    "Content-Type" = "application/json"
+}
+
+$body = @{
+    "customerId" = "cust_bank_client_552"
+    "amount" = 250.00
+    "currency" = "USD"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8080/api/v1/payments" -Method Post -Headers \$headers -Body \$body
+```
+
+__Step 2: Trace Asynchronous Multi-Topic Stream Propagation__
+Open a separate terminal pane window to monitor messages traversing individual broker channels live using the Kafka console consumer utilities inside the cluster container:
+```
+# Intercept the payment initiation alert event emitted from payment-service
+docker exec -it platform-kafka-broker kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payment-events --from-beginning --max-messages 1
+
+# Intercept the subsequent risk scoring evaluation event emitted by fraud-service
+docker exec -it platform-kafka-broker kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic fraud-events --from-beginning --max-messages 1
+```
+
+__Step 3: Validate Polyglot Database State Persistence__
+Verify that transactional logs, outbox marks, ledger entries, and document counters updated successfully across your relational and non-relational database catalogs:
+```
+# Query SQL Server PaymentDb records
+docker exec -it payment_platform_sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P productionSecurityMasterPass987 -Q "USE PaymentDb; SELECT TransactionId, CustomerId, Amount, Status FROM dbo.Payments; SELECT Status, ProcessedAt FROM dbo.TransactionalOutbox;"
+
+# Query SQL Server LedgerDb entries
+docker exec -it payment_platform_sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P productionSecurityMasterPass987 -Q "USE LedgerDb; SELECT EntryId, TransactionId, AccountId, Amount, EntryType FROM dbo.LedgerEntries;"
+
+# Query MongoDB AnalyticsDb collections summary
+docker exec -it payment_platform_mongodb mongosh -u platform_admin -p productionSecurityMasterPass987 --eval "use AnalyticsDb; db.merchant_analytics.find().pretty();"
+```
+
+**3. Scenario B: High-Risk Transaction Policy & DLT Isolation Sweep**: This scenario validates your edge error defense structures. It triggers a velocity threshold violation by submitting a high-value payment over $10,000 to verify that the system rejects the transaction and isolates failures safely into your Dead Letter Topics (DLT).
+
+__Step 1: Submit Fraud-Triggering High-Value Transaction Payload__
+```
+$headers = @{
+    "Authorization" = "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJpc3MiOiJodHRwczovL21pY3Jvc29mdG9ubGluZS5jb20iLCJzdWIiOiJ1c3JfMDAxIn0.sig"
+    "Idempotency-Key" = "idemp_key_fraud_88822"
+    "X-Correlation-ID" = "corr_trace_poison_111B"
+    "Content-Type" = "application/json"
+}
+
+$body = @{
+    "customerId" = "cust_bank_client_552"
+    "amount" = 12500.00
+    "currency" = "USD"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8080/api/v1/payments" -Method Post -Headers \$headers -Body \$body
+```
+
+__Step 2: Verify Consumer Error Handler Dead Letter Topic Routing__
+Because the transaction volume exceeds $10,000, fraud-service will evaluate the status as REJECTED. If an unexpected crash occurs inside a consumer loop or a poison pill is processed, verify that your programmatic DefaultErrorHandler captures the failure and routes it to your dead letter partition:
+```
+# Verify if messages were rerouted into your fallback DLT audit channel
+docker exec -it platform-kafka-broker kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic payment-events.DLT --from-beginning
+```
+
+__Step 3: Assert Fraud-Prevention Balancing Records__
+Query your ReconciliationDb ledger to verify that the automated system audit logs have flagged the anomaly and updated the state tracking rows correctly without corrupting your core bookkeeping tables:
+```
+docker exec -it payment_platform_sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P productionSecurityMasterPass987 -Q "USE ReconciliationDb; SELECT TransactionId, InternalStatus, ExternalStatus, IsBalanced, DiscrepancyReason FROM dbo.ReconciliationRecords;"
+```
