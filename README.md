@@ -921,7 +921,7 @@ public class KafkaConsumerConfig {
     }
 }
 ```
-**4. Core Financial Bookkeeping Consumer Class Block (ledger/infrastructure/messaging/PaymentResultKafkaConsumer.java)**
+**4. Core Financial Bookkeeping Consumer Class Block (infrastructure/messaging/PaymentResultKafkaConsumer.java)**
 
 ```
 package com.payment.platform.ledger.infrastructure.messaging;
@@ -1015,7 +1015,7 @@ public class KafkaConsumerConfig {
 }
 ```
 
-**4. Core Metric Aggregator Consumer Class Block (analytics/infrastructure/messaging/PaymentResultKafkaConsumer.java)**
+**4. Core Metric Aggregator Consumer Class Block (infrastructure/messaging/PaymentResultKafkaConsumer.java)**
 
 ```
 package com.payment.platform.analytics.infrastructure.messaging;
@@ -1131,7 +1131,7 @@ public class KafkaConsumerConfig {
 }
 ```
 
-**4. Core Reconciliation Audit Staging Consumer Class Block (reconciliation/infrastructure/messaging/PaymentResultKafkaConsumer.java)**
+**4. Core Reconciliation Audit Staging Consumer Class Block (infrastructure/messaging/PaymentResultKafkaConsumer.java)**
 
 ```
 package com.payment.platform.reconciliation.infrastructure.messaging;
