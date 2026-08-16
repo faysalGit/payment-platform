@@ -549,6 +549,105 @@ public class KafkaConsumerConfig {
     }
 }
 ```
+
+**4. Core Orchestration Consumer/Producer Class Code Block (infrastructure/messaging/FraudEventKafkaConsumer.)**
+
+```
+package com.payment.platform.worker.infrastructure.messaging;
+
+import com.payment.platform.fraud.messaging.FraudEvaluatedEvent;
+import com.payment.platform.payment.service.PaymentSucceededEvent;
+import com.payment.platform.payment.service.PaymentFailedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.stereotype.Component;
+import java.math.BigDecimal;
+import java.time.Instant;
+
+@Component
+public class FraudEventKafkaConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(FraudEventKafkaConsumer.class);
+    private static final String CORRELATION_HEADER = "X-Correlation-ID";
+
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    public FraudEventKafkaConsumer(KafkaTemplate<String, Object> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    @KafkaListener(
+        topics = "fraud-events",
+        groupId = "${spring.kafka.consumer.group-id}",
+        containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void onFraudEvaluated(FraudEvaluatedEvent event, Acknowledgment acknowledgment) {
+        MDC.put(CORRELATION_HEADER, event.correlationId());
+        log.info("Worker received fraud evaluation check marker. Decision: {}", event.decision());
+
+        try {
+            // Hardcoded dummy extraction variables simulating business data context
+            String merchantId = "TransitGo";
+            BigDecimal transactionAmount = new BigDecimal("40.00");
+
+            if ("APPROVED".equalsIgnoreCase(event.decision())) {
+                log.info("Transaction approved by fraud engine. Executing routing to banking rails.");
+                
+                // Simulated outbound routing success. Compile and Produce success event
+                PaymentSucceededEvent successEvent = new PaymentSucceededEvent(
+                    event.transactionId(),
+                    event.correlationId(),
+                    merchantId,
+                    transactionAmount,
+                    "USD",
+                    Instant.now()
+                );
+
+                kafkaTemplate.send("payment-succeeded", event.transactionId(), successEvent)
+                    .whenComplete((result, ex) -> {
+                        if (ex == null) {
+                            log.info("Successfully produced PaymentSucceededEvent for ID: {}", event.transactionId());
+                            acknowledgment.acknowledge();
+                        } else {
+                            log.error("Failed to publish settlement success event to broker.", ex);
+                        }
+                    });
+            } else {
+                log.warn("Transaction rejected by risk engines. Routing straight to failure streams.");
+                
+                PaymentFailedEvent failureEvent = new PaymentFailedEvent(
+                    event.transactionId(),
+                    event.correlationId(),
+                    merchantId,
+                    transactionAmount,
+                    "USD",
+                    event.failureReason() != null ? event.failureReason() : "Risk threshold violation",
+                    Instant.now()
+                );
+
+                kafkaTemplate.send("payment-failed", event.transactionId(), failureEvent)
+                    .whenComplete((result, ex) -> {
+                        if (ex == null) {
+                            log.info("Successfully produced PaymentFailedEvent for ID: {}", event.transactionId());
+                            acknowledgment.acknowledge();
+                        }
+                    });
+            }
+        } catch (Exception e) {
+            log.error("Fatal exception inside worker processing loop.", e);
+            throw e;
+        } finally {
+            MDC.remove(CORRELATION_HEADER);
+        }
+    }
+}
+```
+
+
 ## Section 6: Stateless Provider Router Service (provider-router-service)
 **1. Purpose & Scope**: An isolated outbound proxy router operating on port 8085. It exposes a stateless ingestion API endpoint to the worker, dynamically evaluates transactional routing metrics, and manages standard form-urlencoded integration envelopes across banking networks via reactive, non-blocking WebClient handlers.
 
@@ -639,7 +738,7 @@ public class WebClientBankingGatewayClient implements BankingGatewayClient {
                                     └── 📄 PaymentResultKafkaConsumer.java
 ```
 
-**3. Consumer Resiliency Middleware Layout (infrastructure/config/KafkaConsumerConfig.java)**
+**3. Consumer Resiliency Middleware Layout (notification/infrastructure/config/KafkaConsumerConfig.java)**
 
 ```
 // java 
@@ -662,6 +761,74 @@ public class KafkaConsumerConfig {
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3L));
         errorHandler.setCommitRecovered(true);
         return errorHandler;
+    }
+}
+```
+
+**4. Core Notification Alert Consumer Class Block (notification/infrastructure/messaging/PaymentResultKafkaConsumer.java)**
+
+```
+package com.payment.platform.notification.infrastructure.messaging;
+
+import com.payment.platform.payment.service.PaymentSucceededEvent;
+import com.payment.platform.payment.service.PaymentFailedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.stereotype.Component;
+
+@Component
+public class PaymentResultKafkaConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentResultKafkaConsumer.class);
+    private static final String CORRELATION_HEADER = "X-Correlation-ID";
+
+    @KafkaListener(
+        topics = "payment-succeeded",
+        groupId = "${spring.kafka.consumer.group-id}",
+        containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void onPaymentSucceeded(PaymentSucceededEvent event, Acknowledgment acknowledgment) {
+        MDC.put(CORRELATION_HEADER, event.correlationId());
+        log.info("Notification service consumed PaymentSucceededEvent for ID: {}", event.transactionId());
+
+        try {
+            log.info("[ALERTER] Constructing digital transaction receipt for Customer Profile linked to transaction.");
+            log.info("[SEND EMAIL] To: customer_account_stub | Message: Your payment of {} {} to {} cleared successfully.", 
+                     event.amount(), event.currency(), event.merchantId());
+            
+            acknowledgment.acknowledge();
+        } catch (Exception ex) {
+            log.error("Failed to process outbound notification receipt sequence.", ex);
+            throw ex;
+        } finally {
+            MDC.remove(CORRELATION_HEADER);
+        }
+    }
+
+    @KafkaListener(
+        topics = "payment-failed",
+        groupId = "${spring.kafka.consumer.group-id}",
+        containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void onPaymentFailed(PaymentFailedEvent event, Acknowledgment acknowledgment) {
+        MDC.put(CORRELATION_HEADER, event.correlationId());
+        log.warn("Notification service consumed PaymentFailedEvent for ID: {}", event.transactionId());
+
+        try {
+            log.info("[ALERTER] Constructing payment decline notification alert payload.");
+            log.info("[SEND SMS/EMAIL] Message: Transaction alert. Your payment of {} {} to {} failed. Reason: {}", 
+                     event.amount(), event.currency(), event.merchantId(), event.failureReason());
+            
+            acknowledgment.acknowledge();
+        } catch (Exception ex) {
+            log.error("Failed to execute outbound failure notification alert routine.", ex);
+            throw ex;
+        } finally {
+            MDC.remove(CORRELATION_HEADER);
+        }
     }
 }
 ```
@@ -754,6 +921,50 @@ public class KafkaConsumerConfig {
     }
 }
 ```
+**4. Core Financial Bookkeeping Consumer Class Block (ledger/infrastructure/messaging/PaymentResultKafkaConsumer.java)**
+
+```
+package com.payment.platform.ledger.infrastructure.messaging;
+
+import com.payment.platform.payment.service.PaymentSucceededEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.stereotype.Component;
+
+@Component
+public class PaymentResultKafkaConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentResultKafkaConsumer.class);
+    private static final String CORRELATION_HEADER = "X-Correlation-ID";
+
+    @KafkaListener(
+        topics = "payment-succeeded",
+        groupId = "${spring.kafka.consumer.group-id}",
+        containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void onSettlementSuccess(PaymentSucceededEvent event, Acknowledgment acknowledgment) {
+        MDC.put(CORRELATION_HEADER, event.correlationId());
+        log.info("Ledger service consumed PaymentSucceededEvent for ID: {}", event.transactionId());
+
+        try {
+            log.info("[ACCOUNTING AUDIT] Generating balanced double-entry rows for merchant Account: {}", event.merchantId());
+            log.info("[DEBIT] Account: bank_receivables_usd | Vol: +{} {}", event.amount(), event.currency());
+            log.info("[CREDIT] Account: act_merchant_{}_usd | Vol: -{} {}", event.merchantId().toLowerCase(), event.amount(), event.currency());
+            
+            // Acknowledge offset to finalize the audit log
+            acknowledgment.acknowledge();
+        } catch (Exception ex) {
+            log.error("Failed to commit bookkeeping log rows for transaction.", ex);
+            throw ex;
+        } finally {
+            MDC.remove(CORRELATION_HEADER);
+        }
+    }
+}
+```
 
 ## Section 9: Real-Time Analytics Stream (analytics-service)
 **1. Purpose & Scope**: Operating as a read-optimized query manager on port 8088, this repository intercept final transaction outcomes non-blockingly. It executes high-speed analytical counters updates inside sliding time windows to power live reporting panels while insulating write-heavy cores from table locking contention.
@@ -804,6 +1015,72 @@ public class KafkaConsumerConfig {
 }
 ```
 
+**4. Core Metric Aggregator Consumer Class Block (analytics/infrastructure/messaging/PaymentResultKafkaConsumer.java)**
+
+```
+package com.payment.platform.analytics.infrastructure.messaging;
+
+import com.payment.platform.payment.service.PaymentSucceededEvent;
+import com.payment.platform.payment.service.PaymentFailedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.stereotype.Component;
+
+@Component
+public class PaymentResultKafkaConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentResultKafkaConsumer.class);
+    private static final String CORRELATION_HEADER = "X-Correlation-ID";
+
+    @KafkaListener(
+        topics = "payment-succeeded",
+        groupId = "${spring.kafka.consumer.group-id}",
+        containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void onPaymentSucceeded(PaymentSucceededEvent event, Acknowledgment acknowledgment) {
+        MDC.put(CORRELATION_HEADER, event.correlationId());
+        log.info("Analytics engine consumed settlement success event for ID: {}", event.transactionId());
+
+        try {
+            log.info("[METRIC UPDATE] SQL Server table dbo.MerchantAnalyticsSummary or MongoDB document _id: {} updated.", event.merchantId());
+            log.info("[METRIC] TotalVolume incremented by +{} {}. SuccessCount incremented by 1.", event.amount(), event.currency());
+            
+            acknowledgment.acknowledge();
+        } catch (Exception ex) {
+            log.error("Failed to update telemetry analytics projection counters.", ex);
+            throw ex;
+        } finally {
+            MDC.remove(CORRELATION_HEADER);
+        }
+    }
+
+    @KafkaListener(
+        topics = "payment-failed",
+        groupId = "${spring.kafka.consumer.group-id}",
+        containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void onPaymentFailed(PaymentFailedEvent event, Acknowledgment acknowledgment) {
+        MDC.put(CORRELATION_HEADER, event.correlationId());
+        log.warn("Analytics engine consumed settlement failure event for ID: {}. Reason: {}", event.transactionId(), event.failureReason());
+
+        try {
+            log.info("[METRIC UPDATE] Failure metrics refreshed for merchant: {}.", event.merchantId());
+            log.info("[METRIC] FailureCount incremented by 1. TotalVolume remains unchanged.");
+            
+            acknowledgment.acknowledge();
+        } catch (Exception ex) {
+            log.error("Failed to write failure stats telemetry data.", ex);
+            throw ex;
+        } finally {
+            MDC.remove(CORRELATION_HEADER);
+        }
+    }
+}
+```
+
 ## Section 10: Automated Balancing Core (reconciliation-service)
 **1. Purpose & Scope**: Operates on port 8089 as an automated system audit checker. It continuously consumes terminal transaction logs and triggers automated batch cross-referencing against external banking settlement records to track variance lines and isolate balancing discrepancies.
 
@@ -850,6 +1127,72 @@ public class KafkaConsumerConfig {
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3L));
         errorHandler.setCommitRecovered(true);
         return errorHandler;
+    }
+}
+```
+
+**4. Core Reconciliation Audit Staging Consumer Class Block (reconciliation/infrastructure/messaging/PaymentResultKafkaConsumer.java)**
+
+```
+package com.payment.platform.reconciliation.infrastructure.messaging;
+
+import com.payment.platform.payment.service.PaymentSucceededEvent;
+import com.payment.platform.payment.service.PaymentFailedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.stereotype.Component;
+
+@Component
+public class PaymentResultKafkaConsumer {
+
+    private static final Logger log = LoggerFactory.getLogger(PaymentResultKafkaConsumer.class);
+    private static final String CORRELATION_HEADER = "X-Correlation-ID";
+
+    @KafkaListener(
+        topics = "payment-succeeded",
+        groupId = "${spring.kafka.consumer.group-id}",
+        containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void onPaymentSucceeded(PaymentSucceededEvent event, Acknowledgment acknowledgment) {
+        MDC.put(CORRELATION_HEADER, event.correlationId());
+        log.info("Reconciliation service staging internal success log for ID: {}", event.transactionId());
+
+        try {
+            log.info("[STAGING RECONCILIATION] Inserting transaction record into SQL Server ReconciliationDb table dbo.ReconciliationRecords.");
+            log.info("[DATA MAP] InternalStatus set to 'SETTLED', ExternalStatus set to 'PENDING_BANK_FILE', IsBalanced = 0");
+            
+            acknowledgment.acknowledge();
+        } catch (Exception ex) {
+            log.error("Failed to stage internal transaction success record for reconciliation.", ex);
+            throw ex;
+        } finally {
+            MDC.remove(CORRELATION_HEADER);
+        }
+    }
+
+    @KafkaListener(
+        topics = "payment-failed",
+        groupId = "${spring.kafka.consumer.group-id}",
+        containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void onPaymentFailed(PaymentFailedEvent event, Acknowledgment acknowledgment) {
+        MDC.put(CORRELATION_HEADER, event.correlationId());
+        log.warn("Reconciliation service staging internal failure log for ID: {}", event.transactionId());
+
+        try {
+            log.info("[STAGING RECONCILIATION] Inserting failed attempt record into local staging logs.");
+            log.info("[DATA MAP] InternalStatus set to 'FAILED', ExternalStatus set to 'PENDING_BANK_FILE', Reason: {}", event.failureReason());
+            
+            acknowledgment.acknowledge();
+        } catch (Exception ex) {
+            log.error("Failed to stage internal transaction failure record for reconciliation.", ex);
+            throw ex;
+        } finally {
+            MDC.remove(CORRELATION_HEADER);
+        }
     }
 }
 ```
